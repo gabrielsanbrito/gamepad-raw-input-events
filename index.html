@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gamepad Raw Input Events – Test Page</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <h1>🎮 Gamepad Raw Input Events – Test Page</h1>
+
+  <!-- ── Instructions ─────────────────────────────────────── -->
+  <section class="instructions" aria-label="How to test">
+    <h2>How to test</h2>
+    <ol>
+      <li>
+        Enable the experimental feature flag in your browser (if required).
+        In <strong>Microsoft Edge</strong> go to
+        <code>edge://flags/#gamepad-raw-input-change-event</code>
+        and set it to <em>Enabled</em>, then relaunch the browser. In Chrome,
+        go to <code>chrome://flags/#gamepad-raw-input-change-event</code>.
+      </li>
+      <li>
+        Connect a gamepad to your computer via USB or Bluetooth and make sure
+        the operating system recognises it.
+      </li>
+      <li>
+        Load or reload this page, then <strong>press any button</strong> on the
+        gamepad to satisfy the required <em>gamepad user gesture</em>. The
+        status indicator below will turn green once the device is detected.
+      </li>
+      <li>
+        Move the sticks and press buttons. Each
+        <code>gamepadrawinputchanged</code> event will appear in the
+        <strong>Event Log</strong> below, with coloured tags for changed axes
+        and buttons.
+      </li>
+      <li>
+        Use the <em>Max log entries</em> slider to limit how many events are
+        kept, and the <em>Clear log</em> button to reset the display.
+      </li>
+    </ol>
+
+  </section>
+
+  <!-- ── Status bar ─────────────────────────────────────── -->
+  <div id="status-bar">
+    <span class="dot" id="connection-dot"></span>
+    <span id="status-text">No gamepad connected</span>
+  </div>
+
+  <!-- ── Live gamepad visualisation ────────────────────── -->
+  <h2>Connected Gamepads</h2>
+  <div id="gamepads-container">
+    <p id="no-gamepad-msg" style="color:#555;">
+      Connect a gamepad and press a button to see it here.
+    </p>
+  </div>
+
+  <!-- ── Event log ──────────────────────────────────────── -->
+  <section id="log-section">
+    <h2>Event Log</h2>
+    <div id="log-controls">
+      <button id="clear-btn">Clear log</button>
+      <label>
+        Max entries:
+        <input type="range" id="max-entries" min="10" max="200" value="50" step="10" />
+        <span id="max-entries-val">50</span>
+      </label>
+    </div>
+    <div id="event-log" role="log" aria-live="polite" aria-label="Raw input event log">
+      <p id="placeholder">Waiting for gamepad input…</p>
+    </div>
+  </section>
+
+  <script src="main.js"></script>
+</body>
+</html>
