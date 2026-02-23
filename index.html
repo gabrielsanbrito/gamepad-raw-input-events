@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gamepad Raw Input Events – Test Page</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f0f13;
+      color: #e2e2e8;
+      padding: 24px;
+      line-height: 1.5;
+    }
+
+    h1 { font-size: 1.6rem; margin-bottom: 8px; color: #fff; }
+    h2 { font-size: 1.1rem; margin: 20px 0 10px; color: #a0a0c0; text-transform: uppercase; letter-spacing: .05em; }
+
+    /* ── Instructions ─────────────────────────────────────────── */
+    .instructions {
+      background: #1a1a2e;
+      border: 1px solid #2e2e50;
+      border-left: 4px solid #6c63ff;
+      border-radius: 6px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+    }
+    .instructions h2 { margin-top: 0; color: #8b85ff; }
+    .instructions ol { padding-left: 20px; }
+    .instructions li { margin-bottom: 6px; }
+    .instructions code {
+      background: #252540;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: .9em;
+      color: #a78bfa;
+    }
+    .note {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #1e2a1e;
+      border: 1px solid #2e4a2e;
+      border-radius: 4px;
+      font-size: .9em;
+      color: #88c888;
+    }
+
+    /* ── Status bar ───────────────────────────────────────────── */
+    #status-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: #1a1a2e;
+      border: 1px solid #2e2e50;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: .95rem;
+    }
+    .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: #555;
+      transition: background .3s;
+    }
+    .dot.connected  { background: #4ade80; }
+    .dot.no-support { background: #f87171; }
+
+    /* ── Gamepads grid ────────────────────────────────────────── */
+    #gamepads-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .gamepad-card {
+      background: #1a1a2e;
+      border: 1px solid #2e2e50;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .gamepad-card h3 {
+      font-size: .95rem;
+      color: #a78bfa;
+      margin-bottom: 12px;
+      word-break: break-all;
+    }
+
+    /* Axes */
+    .axes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .axis-item { font-size: .82rem; }
+    .axis-label { color: #888; margin-bottom: 3px; }
+    .axis-track {
+      height: 6px;
+      background: #2e2e50;
+      border-radius: 3px;
+      position: relative;
+      overflow: visible;
+    }
+    .axis-thumb {
+      position: absolute;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #6c63ff;
+      top: -2px;
+      transform: translateX(-50%);
+      left: 50%;
+      transition: left .05s;
+    }
+    .axis-value { color: #c4b5fd; margin-top: 3px; }
+
+    /* Buttons */
+    .buttons-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .btn-indicator {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      font-size: .75rem;
+      color: #888;
+    }
+    .btn-circle {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: #2e2e50;
+      border: 2px solid #3e3e70;
+      transition: background .05s, border-color .05s;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-fill {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: #6c63ff;
+      transition: height .05s;
+    }
+    .btn-circle.pressed { border-color: #a78bfa; }
+
+    /* ── Event log ────────────────────────────────────────────── */
+    #log-section { margin-bottom: 16px; }
+    #log-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    button {
+      background: #252540;
+      color: #c4b5fd;
+      border: 1px solid #3e3e70;
+      border-radius: 5px;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: .88rem;
+      transition: background .15s;
+    }
+    button:hover { background: #32325a; }
+
+    label { font-size: .88rem; color: #888; display: flex; align-items: center; gap: 6px; }
+    input[type=range] { accent-color: #6c63ff; }
+
+    #event-log {
+      background: #0d0d1a;
+      border: 1px solid #2e2e50;
+      border-radius: 6px;
+      padding: 12px;
+      height: 320px;
+      overflow-y: auto;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: .8rem;
+    }
+    .log-entry {
+      padding: 4px 0;
+      border-bottom: 1px solid #1a1a2e;
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 8px;
+      animation: fadeIn .15s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .log-ts   { color: #555; flex-shrink: 0; }
+    .log-body { color: #c4b5fd; word-break: break-all; }
+
+    .tag {
+      display: inline-block;
+      padding: 0 5px;
+      border-radius: 3px;
+      font-size: .75rem;
+      margin-right: 4px;
+      font-weight: 600;
+    }
+    .tag-axes    { background: #1e3a5e; color: #60a5fa; }
+    .tag-btval   { background: #3b2a1a; color: #fb923c; }
+    .tag-pressed { background: #1a2e1a; color: #4ade80; }
+    .tag-released{ background: #2e1a1a; color: #f87171; }
+
+    #placeholder {
+      color: #444;
+      text-align: center;
+      padding-top: 80px;
+    }
+
+    /* ── API support warning ──────────────────────────────────── */
+    .api-warning {
+      background: #2e1a1a;
+      border: 1px solid #5e2a2a;
+      border-radius: 6px;
+      padding: 12px 16px;
+      color: #f87171;
+      margin-bottom: 20px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎮 Gamepad Raw Input Events – Test Page</h1>
+
+  <!-- ── Instructions ─────────────────────────────────────── -->
+  <section class="instructions" aria-label="How to test">
+    <h2>How to test</h2>
+    <ol>
+      <li>
+        Enable the experimental feature flag in your browser (if required).
+        In <strong>Microsoft Edge</strong> go to
+        <code>edge://flags/#enable-experimental-web-platform-features</code>
+        and set it to <em>Enabled</em>, then relaunch the browser.
+      </li>
+      <li>
+        Connect a gamepad to your computer via USB or Bluetooth and make sure
+        the operating system recognises it.
+      </li>
+      <li>
+        Load or reload this page, then <strong>press any button</strong> on the
+        gamepad to satisfy the required <em>gamepad user gesture</em>. The
+        status indicator below will turn green once the device is detected.
+      </li>
+      <li>
+        Move the sticks and press buttons. Each
+        <code>rawgamepadinputchange</code> event will appear in the
+        <strong>Event Log</strong> below, with coloured tags for changed axes
+        and buttons.
+      </li>
+      <li>
+        Use the <em>Max log entries</em> slider to limit how many events are
+        kept, and the <em>Clear log</em> button to reset the display.
+      </li>
+    </ol>
+    <p class="note">
+      ⚠️ <strong>Note:</strong> The <code>rawgamepadinputchange</code> event is
+      a proposed API currently being standardised. It may not be available in
+      your browser yet. If the <em>API available</em> indicator below shows
+      <em>Not supported</em>, the page will fall back to the standard polling
+      model so you can still observe gamepad state changes.
+    </p>
+  </section>
+
+  <!-- ── API support warning ────────────────────────────── -->
+  <div class="api-warning" id="api-warning">
+    ⚠️ <strong>rawgamepadinputchange</strong> is not supported in this browser.
+    The log below is driven by a polling fallback using
+    <code>requestAnimationFrame</code> instead.
+  </div>
+
+  <!-- ── Status bar ─────────────────────────────────────── -->
+  <div id="status-bar">
+    <span class="dot" id="connection-dot"></span>
+    <span id="status-text">No gamepad connected</span>
+  </div>
+
+  <!-- ── Live gamepad visualisation ────────────────────── -->
+  <h2>Connected Gamepads</h2>
+  <div id="gamepads-container">
+    <p id="no-gamepad-msg" style="color:#555;">
+      Connect a gamepad and press a button to see it here.
+    </p>
+  </div>
+
+  <!-- ── Event log ──────────────────────────────────────── -->
+  <section id="log-section">
+    <h2>Event Log</h2>
+    <div id="log-controls">
+      <button id="clear-btn">Clear log</button>
+      <label>
+        Max entries:
+        <input type="range" id="max-entries" min="10" max="200" value="50" step="10" />
+        <span id="max-entries-val">50</span>
+      </label>
+    </div>
+    <div id="event-log" role="log" aria-live="polite" aria-label="Raw input event log">
+      <p id="placeholder">Waiting for gamepad input…</p>
+    </div>
+  </section>
+
+  <script>
+    'use strict';
+
+    // ── Config ───────────────────────────────────────────────────
+    const MAX_ENTRIES_DEFAULT = 50;
+    let maxEntries = MAX_ENTRIES_DEFAULT;
+
+    // Button labels for standard mapping
+    const STD_BUTTONS = [
+      'A','B','X','Y',
+      'LB','RB','LT','RT',
+      'Back','Start',
+      'LS','RS',
+      'Up','Down','Left','Right',
+      'Home',
+    ];
+
+    // ── State ────────────────────────────────────────────────────
+    const gamepadCards = {};   // index → card DOM node
+    let rawApiAvailable = false;
+    let pollingActive   = false;
+    // Track previous state for polling fallback
+    const prevState = {};      // index → { buttons: [], axes: [] }
+
+    // ── DOM references ───────────────────────────────────────────
+    const connectionDot  = document.getElementById('connection-dot');
+    const statusText     = document.getElementById('status-text');
+    const gamepadsContainer = document.getElementById('gamepads-container');
+    const noGamepadMsg   = document.getElementById('no-gamepad-msg');
+    const eventLog       = document.getElementById('event-log');
+    const placeholder    = document.getElementById('placeholder');
+    const clearBtn       = document.getElementById('clear-btn');
+    const maxEntriesInput = document.getElementById('max-entries');
+    const maxEntriesVal  = document.getElementById('max-entries-val');
+    const apiWarning     = document.getElementById('api-warning');
+
+    // ── Helpers ──────────────────────────────────────────────────
+    function formatTime(ts) {
+      return (ts / 1000).toFixed(3) + 's';
+    }
+
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+    // ── Event log ────────────────────────────────────────────────
+    function logEvent({ ts, gamepadIndex, axesChanged, buttonsValueChanged, buttonsPressed, buttonsReleased }) {
+      if (placeholder && placeholder.parentNode === eventLog) {
+        placeholder.remove();
+      }
+
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+
+      const tsCell = document.createElement('span');
+      tsCell.className = 'log-ts';
+      tsCell.textContent = formatTime(ts);
+
+      const body = document.createElement('span');
+      body.className = 'log-body';
+
+      let html = `<strong style="color:#e2e2e8">GP${gamepadIndex}</strong> `;
+
+      if (axesChanged.length) {
+        html += `<span class="tag tag-axes">axes</span>${axesChanged.join(',')} `;
+      }
+      if (buttonsValueChanged.length) {
+        html += `<span class="tag tag-btval">value</span>${buttonsValueChanged.join(',')} `;
+      }
+      if (buttonsPressed.length) {
+        html += `<span class="tag tag-pressed">pressed</span>${buttonsPressed.join(',')} `;
+      }
+      if (buttonsReleased.length) {
+        html += `<span class="tag tag-released">released</span>${buttonsReleased.join(',')} `;
+      }
+      body.innerHTML = html;
+
+      entry.appendChild(tsCell);
+      entry.appendChild(body);
+
+      // Prepend newest entry
+      eventLog.insertBefore(entry, eventLog.firstChild);
+
+      // Trim old entries
+      while (eventLog.children.length > maxEntries) {
+        eventLog.removeChild(eventLog.lastChild);
+      }
+    }
+
+    // ── Gamepad card ─────────────────────────────────────────────
+    function getOrCreateCard(gamepad) {
+      if (gamepadCards[gamepad.index]) return gamepadCards[gamepad.index];
+
+      noGamepadMsg.style.display = 'none';
+
+      const card = document.createElement('div');
+      card.className = 'gamepad-card';
+      card.id = `gp-card-${gamepad.index}`;
+
+      const title = document.createElement('h3');
+      title.textContent = `${gamepad.id} (index ${gamepad.index})`;
+      card.appendChild(title);
+
+      // Axes section
+      const axesHeading = document.createElement('div');
+      axesHeading.style.cssText = 'font-size:.8rem;color:#555;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em';
+      axesHeading.textContent = 'Axes';
+      card.appendChild(axesHeading);
+
+      const axesGrid = document.createElement('div');
+      axesGrid.className = 'axes-grid';
+      axesGrid.id = `gp-axes-${gamepad.index}`;
+      for (let i = 0; i < gamepad.axes.length; i++) {
+        const item = document.createElement('div');
+        item.className = 'axis-item';
+        item.innerHTML = `
+          <div class="axis-label">Axis ${i}</div>
+          <div class="axis-track" id="gp${gamepad.index}-axis${i}-track">
+            <div class="axis-thumb" id="gp${gamepad.index}-axis${i}-thumb" style="left:50%"></div>
+          </div>
+          <div class="axis-value" id="gp${gamepad.index}-axis${i}-val">0.000</div>`;
+        axesGrid.appendChild(item);
+      }
+      card.appendChild(axesGrid);
+
+      // Buttons section
+      const btnsHeading = document.createElement('div');
+      btnsHeading.style.cssText = 'font-size:.8rem;color:#555;margin:10px 0 6px;text-transform:uppercase;letter-spacing:.05em';
+      btnsHeading.textContent = 'Buttons';
+      card.appendChild(btnsHeading);
+
+      const btnsGrid = document.createElement('div');
+      btnsGrid.className = 'buttons-grid';
+      btnsGrid.id = `gp-buttons-${gamepad.index}`;
+      for (let i = 0; i < gamepad.buttons.length; i++) {
+        const label = STD_BUTTONS[i] !== undefined ? STD_BUTTONS[i] : String(i);
+        const item = document.createElement('div');
+        item.className = 'btn-indicator';
+        item.innerHTML = `
+          <div class="btn-circle" id="gp${gamepad.index}-btn${i}-circle">
+            <div class="btn-fill" id="gp${gamepad.index}-btn${i}-fill" style="height:0%"></div>
+          </div>
+          <span>${label}</span>`;
+        btnsGrid.appendChild(item);
+      }
+      card.appendChild(btnsGrid);
+
+      gamepadsContainer.appendChild(card);
+      gamepadCards[gamepad.index] = card;
+      return card;
+    }
+
+    function updateCard(gamepad) {
+      getOrCreateCard(gamepad);
+
+      for (let i = 0; i < gamepad.axes.length; i++) {
+        const v = gamepad.axes[i];
+        const pct = clamp((v + 1) / 2 * 100, 0, 100);
+        const thumb = document.getElementById(`gp${gamepad.index}-axis${i}-thumb`);
+        const val   = document.getElementById(`gp${gamepad.index}-axis${i}-val`);
+        if (thumb) thumb.style.left = pct + '%';
+        if (val)   val.textContent  = v.toFixed(3);
+      }
+
+      for (let i = 0; i < gamepad.buttons.length; i++) {
+        const btn    = gamepad.buttons[i];
+        const circle = document.getElementById(`gp${gamepad.index}-btn${i}-circle`);
+        const fill   = document.getElementById(`gp${gamepad.index}-btn${i}-fill`);
+        if (!circle || !fill) continue;
+        const pct = clamp(btn.value * 100, 0, 100);
+        fill.style.height = pct + '%';
+        if (btn.pressed) {
+          circle.classList.add('pressed');
+        } else {
+          circle.classList.remove('pressed');
+        }
+      }
+    }
+
+    function removeCard(index) {
+      const card = gamepadCards[index];
+      if (card) {
+        card.remove();
+        delete gamepadCards[index];
+      }
+      if (Object.keys(gamepadCards).length === 0) {
+        noGamepadMsg.style.display = '';
+      }
+    }
+
+    // ── Connection status ─────────────────────────────────────────
+    function updateStatus() {
+      const gamepads = navigator.getGamepads().filter(Boolean);
+      if (gamepads.length === 0) {
+        connectionDot.className = 'dot';
+        statusText.textContent  = 'No gamepad connected';
+      } else {
+        connectionDot.className = 'dot connected';
+        statusText.textContent  =
+          gamepads.length === 1
+            ? `1 gamepad connected`
+            : `${gamepads.length} gamepads connected`;
+      }
+    }
+
+    // ── Raw API event handler ─────────────────────────────────────
+    function onRawInput(event) {
+      const snapshot = event.gamepadSnapshot;
+      const gamepad  = event.target;
+
+      updateCard(snapshot);
+
+      logEvent({
+        ts:                  snapshot.timestamp,
+        gamepadIndex:        snapshot.index,
+        axesChanged:         Array.from(event.axesChanged         || []),
+        buttonsValueChanged: Array.from(event.buttonsValueChanged || []),
+        buttonsPressed:      Array.from(event.buttonsPressed      || []),
+        buttonsReleased:     Array.from(event.buttonsReleased     || []),
+      });
+    }
+
+    // ── Polling fallback ──────────────────────────────────────────
+    function diff(current, prev) {
+      const axesChanged = [], buttonsValueChanged = [], buttonsPressed = [], buttonsReleased = [];
+      for (let i = 0; i < current.axes.length; i++) {
+        if (prev.axes[i] !== current.axes[i]) axesChanged.push(i);
+      }
+      for (let i = 0; i < current.buttons.length; i++) {
+        const cb = current.buttons[i], pb = prev.buttons[i] || { pressed: false, value: 0 };
+        if (cb.value !== pb.value)     buttonsValueChanged.push(i);
+        if (cb.pressed && !pb.pressed) buttonsPressed.push(i);
+        if (!cb.pressed && pb.pressed) buttonsReleased.push(i);
+      }
+      return { axesChanged, buttonsValueChanged, buttonsPressed, buttonsReleased };
+    }
+
+    function copyState(gamepad) {
+      return {
+        axes:    Array.from(gamepad.axes),
+        buttons: gamepad.buttons.map(b => ({ pressed: b.pressed, value: b.value })),
+      };
+    }
+
+    function pollLoop() {
+      if (!pollingActive) return;
+      const gamepads = navigator.getGamepads().filter(Boolean);
+      for (const gamepad of gamepads) {
+        if (!prevState[gamepad.index]) {
+          prevState[gamepad.index] = copyState(gamepad);
+          updateCard(gamepad);
+          continue;
+        }
+        const changes = diff(gamepad, prevState[gamepad.index]);
+        const hasChanges =
+          changes.axesChanged.length ||
+          changes.buttonsValueChanged.length ||
+          changes.buttonsPressed.length ||
+          changes.buttonsReleased.length;
+
+        if (hasChanges) {
+          updateCard(gamepad);
+          logEvent({ ts: gamepad.timestamp, gamepadIndex: gamepad.index, ...changes });
+        }
+        prevState[gamepad.index] = copyState(gamepad);
+      }
+      requestAnimationFrame(pollLoop);
+    }
+
+    // ── Gamepad connected / disconnected ─────────────────────────
+    window.addEventListener('gamepadconnected', (e) => {
+      const gamepad = e.gamepad;
+      updateStatus();
+      getOrCreateCard(gamepad);
+
+      if (rawApiAvailable) {
+        // Attach the raw input handler to the live gamepad object
+        const live = navigator.getGamepads()[gamepad.index];
+        if (live) {
+          live.onrawgamepadinputchange = onRawInput;
+        }
+      } else {
+        // Polling fallback: start loop if not already running
+        if (!pollingActive) {
+          pollingActive = true;
+          requestAnimationFrame(pollLoop);
+        }
+      }
+    });
+
+    window.addEventListener('gamepaddisconnected', (e) => {
+      const index = e.gamepad.index;
+      removeCard(index);
+      delete prevState[index];
+      updateStatus();
+    });
+
+    // ── Detect API support ────────────────────────────────────────
+    (function detectApi() {
+      // The API exposes onrawgamepadinputchange on Gamepad.prototype
+      rawApiAvailable = typeof Gamepad !== 'undefined' &&
+                        'onrawgamepadinputchange' in Gamepad.prototype;
+
+      if (!rawApiAvailable) {
+        apiWarning.style.display = 'block';
+        // Start polling once any gamepad connects (handled in gamepadconnected)
+      }
+    })();
+
+    // ── Controls ──────────────────────────────────────────────────
+    clearBtn.addEventListener('click', () => {
+      eventLog.innerHTML = '';
+      const p = document.createElement('p');
+      p.id = 'placeholder';
+      p.style.cssText = 'color:#444;text-align:center;padding-top:80px';
+      p.textContent = 'Waiting for gamepad input…';
+      eventLog.appendChild(p);
+    });
+
+    maxEntriesInput.addEventListener('input', () => {
+      maxEntries = parseInt(maxEntriesInput.value, 10);
+      maxEntriesVal.textContent = maxEntries;
+    });
+
+    // Show initial status
+    updateStatus();
+  </script>
+</body>
+</html>
