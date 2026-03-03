@@ -35,6 +35,33 @@ function formatTime(ts) {
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
+function getActiveGamepad(index) {
+  const gamepads = navigator.getGamepads();
+  return gamepads[index] || null;
+}
+
+function triggerDualRumble(index) {
+  const gamepad = getActiveGamepad(index);
+  if (!gamepad || !gamepad.vibrationActuator) return;
+  gamepad.vibrationActuator.playEffect('dual-rumble', {
+    startDelay: 0,
+    duration: 500,
+    weakMagnitude: 0.5,
+    strongMagnitude: 1.0,
+  });
+}
+
+function triggerTriggerRumble(index) {
+  const gamepad = getActiveGamepad(index);
+  if (!gamepad || !gamepad.vibrationActuator) return;
+  gamepad.vibrationActuator.playEffect('trigger-rumble', {
+    startDelay: 0,
+    duration: 500,
+    leftTrigger: 0.5,
+    rightTrigger: 1.0,
+  });
+}
+
 // ── Event log ────────────────────────────────────────────────
 function logEvent({ ts, gamepadIndex, axesChanged, buttonsValueChanged, buttonsPressed, buttonsReleased }) {
   if (placeholder && placeholder.parentNode === eventLog) {
@@ -136,6 +163,42 @@ function getOrCreateCard(gamepad) {
     btnsGrid.appendChild(item);
   }
   card.appendChild(btnsGrid);
+
+  // Rumble section (only if vibrationActuator is supported)
+  const vibration = gamepad.vibrationActuator;
+  if (vibration && vibration.effects && vibration.effects.length > 0) {
+    const rumbleHeading = document.createElement('div');
+    rumbleHeading.style.cssText = 'font-size:.8rem;color:#555;margin:10px 0 6px;text-transform:uppercase;letter-spacing:.05em';
+    rumbleHeading.textContent = 'Rumble';
+    card.appendChild(rumbleHeading);
+
+    const rumbleContainer = document.createElement('div');
+    rumbleContainer.className = 'rumble-controls';
+
+    // Dual Rumble button
+    if (vibration.effects.includes('dual-rumble')) {
+      const dualBtn = document.createElement('button');
+      dualBtn.className = 'rumble-btn';
+      dualBtn.textContent = 'Dual Rumble';
+      dualBtn.addEventListener('click', () => {
+        triggerDualRumble(gamepad.index);
+      });
+      rumbleContainer.appendChild(dualBtn);
+    }
+
+    // Trigger Rumble button
+    if (vibration.effects.includes('trigger-rumble')) {
+      const triggerBtn = document.createElement('button');
+      triggerBtn.className = 'rumble-btn';
+      triggerBtn.textContent = 'Trigger Rumble';
+      triggerBtn.addEventListener('click', () => {
+        triggerTriggerRumble(gamepad.index);
+      });
+      rumbleContainer.appendChild(triggerBtn);
+    }
+
+    card.appendChild(rumbleContainer);
+  }
 
   gamepadsContainer.appendChild(card);
   gamepadCards[gamepad.index] = card;

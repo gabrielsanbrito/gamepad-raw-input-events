@@ -102,6 +102,31 @@ h2 { font-size: 1.1rem; margin: 20px 0 10px; color: #a0a0c0; text-transform: upp
 }
 .axis-value { color: #c4b5fd; margin-top: 3px; }
 
+/* Rumble controls */
+.rumble-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.rumble-btn {
+  background: #2e2e50;
+  color: #c4b5fd;
+  border: 1px solid #3e3e70;
+  border-radius: 5px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: .85rem;
+  transition: background .15s, border-color .15s;
+}
+.rumble-btn:hover {
+  background: #3e3e70;
+  border-color: #6c63ff;
+}
+.rumble-btn:active {
+  background: #6c63ff;
+}
+
 /* Buttons */
 .buttons-grid {
   display: flex;
